@@ -1,0 +1,26 @@
+language: c++
+
+sudo: false
+group: travis_latest
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - deadsnakes
+    - sourceline: 'deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-trusty-prod trusty main'
+      key_url: 'https://packages.microsoft.com/keys/microsoft.asc'
+    packages:
+    - g++-7
+    - cmake
+
+before_install:
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7
+
+before_script:
+  - mkdir -p build && cd build
+  - cmake ..
+
+script:
+  - make -j2
+  - bin/tests
