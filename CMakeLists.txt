@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(table_seating_ea)
+project(table_seating_ga)
 
 # Include the project cmake module directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
