@@ -1,0 +1,21 @@
+language: c++
+
+sudo: false
+group: travis_latest
+
+addons:
+  apt:
+    packages:
+    - g++-7
+    - cmake
+
+before_install:
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7
+
+before_script:
+  - mkdir -p build && cd build
+  - cmake ..
+
+script:
+  - make -j2
+  - bin/tests
