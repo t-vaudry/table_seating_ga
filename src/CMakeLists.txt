@@ -3,6 +3,8 @@ set(SOURCE_FILES
     dll.h
     main.cpp
     functions.h
+    Individual.h
+    Individual.cpp
     )
 
 # Create the executable

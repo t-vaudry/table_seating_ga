@@ -1,5 +1,6 @@
 #pragma once
 
 #include "dll.h"
+#include "Individual.h"
 
-extern "C" DLL_PUBLIC int add(int a, int b);
+DLL_PUBLIC std::pair<Individual, Individual> Crossover(CrossoverType type, Individual& father, Individual& mother);
