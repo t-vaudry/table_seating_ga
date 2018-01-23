@@ -2,6 +2,7 @@ set(SOURCE_FILES
     # Source files here...
     dll.h
     main.cpp
+    config.h
     functions.h
     Individual.h
     Individual.cpp
