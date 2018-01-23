@@ -14,6 +14,7 @@ int main()
 
     // 0: Setup
     Configuration configuration = Configuration("../src/input/settings.txt", "../src/input/guests.csv");
+    //Configuration configuration = Configuration("C:/Users/thoma/Documents/GitHub/table_seating_ga/src/input/settings.txt", "C:/Users/thoma/Documents/GitHub/table_seating_ga/src/input/guests.csv");
     Population population;
     Individual* champion = nullptr;
 
@@ -26,7 +27,7 @@ int main()
 
     // 3: while not Termination do
     int numOfGenerations = 0;
-    while (numOfGenerations < configuration.sMaxGenerations || champion->GetFitness() != 0) {
+    while (numOfGenerations < configuration.sMaxGenerations && champion->GetFitness() != 0) {
         // 4: Parent Selection
         Population parents = ParentSelection(population, configuration);
 
