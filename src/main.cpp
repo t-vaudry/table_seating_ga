@@ -15,6 +15,7 @@ int main()
     // 0: Setup
     Configuration configuration = Configuration("../src/input/settings.txt", "../src/input/guests.csv");
     //Configuration configuration = Configuration("C:/Users/thoma/Documents/GitHub/table_seating_ga/src/input/settings.txt", "C:/Users/thoma/Documents/GitHub/table_seating_ga/src/input/guests.csv");
+
     Population population;
     Individual* champion = nullptr;
 
@@ -25,8 +26,8 @@ int main()
     EvaluateFitness(population, configuration);
     champion = FindChampion(population);
 
-    // 3: while not Termination do
     int numOfGenerations = 0;
+    // 3: while not Termination do
     while (numOfGenerations < configuration.sMaxGenerations && champion->GetFitness() != 0) {
         // 4: Parent Selection
         Population parents = ParentSelection(population, configuration);
@@ -42,6 +43,7 @@ int main()
 
         // 8: Find champion
         champion = FindChampion(population);
+
         numOfGenerations++;
     }
 
@@ -195,8 +197,19 @@ DLL_PUBLIC Population GenerateOffspring(Population& parents, Configuration& conf
             offspring.push_back(new Individual(*parents[rand() % configuration.sParentSize]));
         }
         case MUTATION: {
+            MutationType mutation;
+            float mutate = (float)rand() / (float)RAND_MAX;
+            temp = 0.0f;
+
+            for (int i = 0; i < 4; i++) {
+                temp += configuration.sMutationParameters[i];
+                if (mutate <= temp) {
+                    mutation = static_cast<MutationType>(i);
+                    break;
+                }
+            }
             offspring.push_back(new Individual(*parents[rand() % configuration.sParentSize]));
-            offspring.back()->Mutate(static_cast<MutationType>(rand() % 4));
+            offspring.back()->Mutate(mutation);
         }
         case CROSSOVER: {
             Children children = Crossover(PMX, parents[rand() % configuration.sParentSize], parents[rand() % configuration.sParentSize]);
@@ -292,6 +305,21 @@ DLL_PUBLIC Population SurvivorSelection(Population& parents, Population& offspri
     currentGeneration.insert(currentGeneration.end(), parents.begin(), parents.end());
     currentGeneration.insert(currentGeneration.end(), offspring.begin(), offspring.end());
     std::random_shuffle(currentGeneration.begin(), currentGeneration.end());
+
+    // Elitism
+    Individual* elitist = nullptr;
+
+    for (auto individual : currentGeneration) {
+        if (elitist == nullptr) {
+            elitist = individual;
+        }
+        else if (individual->GetFitness() < elitist->GetFitness()) {
+            elitist = individual;
+        }
+    }
+
+    nextGeneration.push_back(elitist);
+    currentGeneration.erase(std::remove(currentGeneration.begin(), currentGeneration.end(), elitist), currentGeneration.end());
 
     int popSize = configuration.sPopulationSize;
 

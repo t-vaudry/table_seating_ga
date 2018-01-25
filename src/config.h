@@ -97,14 +97,26 @@ public:
     static const int sMaxGenerations = 1000;
 
     static const float sClone;
-    static const float sMutation; // TODO: consider probability of each mutation
+    static const float sMutation;
     static const float sCrossover;
     static const float sEvolutionParameters[3];
+
+    static const float sMutationSwap;
+    static const float sMutationInsert;
+    static const float sMutationScramble;
+    static const float sMutationInversion;
+    static const float sMutationParameters[4];
 };
 
-const float Configuration::sClone = 0.1f;
-const float Configuration::sMutation = 0.4f;
-const float Configuration::sCrossover = 0.5f;
+const float Configuration::sClone = 0.00f;
+const float Configuration::sMutation = 0.85f;
+const float Configuration::sCrossover = 0.15f;
 const float Configuration::sEvolutionParameters[3] = { sClone, sMutation, sCrossover };
+
+const float Configuration::sMutationSwap = 0.25f;
+const float Configuration::sMutationInsert = 0.10f;
+const float Configuration::sMutationScramble = 0.05f;
+const float Configuration::sMutationInversion = 0.60f;
+const float Configuration::sMutationParameters[4] = { sMutationSwap, sMutationInsert, sMutationScramble, sMutationInversion };
 
 #endif
