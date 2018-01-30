@@ -90,11 +90,16 @@ public:
     inline DLL_PUBLIC std::vector< std::vector<int> > GetPreferences() { return mPreferences; }
     inline DLL_PUBLIC int GetTableSize() { return mTableSize; }
     inline DLL_PUBLIC std::vector<std::string> GetNames() { return mNames; }
+    inline DLL_PUBLIC int GetNumberOfTables() { return mNumOfTables; }
 
     static const int sPopulationSize = 100;
     static const int sParentSize = 20;
     static const int sOffspringSize = 300;
     static const int sMaxGenerations = 1000;
+    static const int sEpochLength = 50;
+    static const int sDiversityRange = 10;
+    static const int sNumberOfIslands = 6;
+    static const int sMigrationSize = 5;
 
     static const float sClone;
     static const float sMutation;

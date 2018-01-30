@@ -6,48 +6,80 @@
 
 #include "functions.h"
 
+#define TESTING false
+
 using namespace std;
 
 int main()
 {
     srand(unsigned(time(NULL)));
 
+    // Output diversity to file
+    std::ofstream file;
+
     // 0: Setup
     Configuration configuration = Configuration("../src/input/settings.txt", "../src/input/guests.csv");
     //Configuration configuration = Configuration("C:/Users/thoma/Documents/GitHub/table_seating_ga/src/input/settings.txt", "C:/Users/thoma/Documents/GitHub/table_seating_ga/src/input/guests.csv");
 
-    Population population;
-    Individual* champion = nullptr;
+    std::vector<Population> population;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        // 1: Initialize Population
+        population.push_back(Population());
+        InitializePopulation(population[i], configuration);
 
-    // 1: Initialize Population
-    InitializePopulation(population, configuration);
-
-    // 2: Evaluate Fitness
-    EvaluateFitness(population, configuration);
-    champion = FindChampion(population);
+        // 2: Evaluate Fitness
+        EvaluateFitness(population[i], configuration);
+    }
 
     int numOfGenerations = 0;
+
+    if (TESTING) {
+        file.open("../src/output/diversity.csv", std::ios::app);
+    }
+
     // 3: while not Termination do
-    while (numOfGenerations < configuration.sMaxGenerations && champion->GetFitness() != 0) {
-        // 4: Parent Selection
-        Population parents = ParentSelection(population, configuration);
+    while (numOfGenerations < configuration.sMaxGenerations) {
 
-        // 5: Perform Crossover & Mutation
-        Population offspring = GenerateOffspring(parents, configuration);
+        for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+            // 4: Parent Selection
+            Population parents = ParentSelection(population[i], configuration);
 
-        // 6: Evaluate Fitness
-        EvaluateFitness(offspring, configuration);
+            // 5: Perform Crossover & Mutation
+            Population offspring = GenerateOffspring(parents, configuration);
 
-        // 7: Survivor Selection
-        population = SurvivorSelection(parents, offspring, configuration);
+            // 6: Evaluate Fitness
+            EvaluateFitness(offspring, configuration);
 
-        // 8: Find champion
-        champion = FindChampion(population);
+            // 7: Survivor Selection
+            population[i] = SurvivorSelection(parents, offspring, configuration);
+        }
+
+        if (TESTING) {
+            // 8: Evaluate Diversity
+            file << EvaluateDiversity(population, configuration) << ",";
+        }
+
+        if (numOfGenerations % configuration.sEpochLength == 0) {
+            // 9: Migration
+            MigratePopulations(population, configuration);
+        }
 
         numOfGenerations++;
     }
 
-    // 9: Output
+    if (TESTING) {
+        file.close();
+    }
+
+    Population mergedPopulation;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        mergedPopulation.insert(mergedPopulation.end(), population[i].begin(), population[i].end());
+    }
+
+    Individual* champion;
+    champion = FindChampion(mergedPopulation);
+
+    // 10: Output
     GenerateOutputFile(champion, configuration);
 }
 
@@ -347,6 +379,155 @@ DLL_PUBLIC Population SurvivorSelection(Population& parents, Population& offspri
     }
 
     return nextGeneration;
+}
+
+DLL_PUBLIC int EvaluateDiversity(std::vector<Population> populations, Configuration& configuration)
+{
+    std::vector<int> fittestIndividualsIndex;
+    int populationSize = configuration.sPopulationSize * configuration.sNumberOfIslands;
+
+    Population population;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        population.insert(population.end(), populations[i].begin(), populations[i].end());
+    }
+
+    Individual* champion = FindChampion(population);
+
+    for (int i = 0; i < populationSize; i++) {
+        if (population[i]->GetFitness() < champion->GetFitness() + configuration.sDiversityRange) {
+            fittestIndividualsIndex.push_back(i);
+        }
+    }
+
+    int diversity = 0;
+    int numOfFit = fittestIndividualsIndex.size();
+
+    for (int i = 0; i < numOfFit; i++) {
+        for (int j = i + 1; j < numOfFit; j++) {
+            diversity += MeasureDiversity(population[fittestIndividualsIndex[i]], population[fittestIndividualsIndex[j]], configuration);
+        }
+    }
+
+    return diversity;
+}
+
+DLL_PUBLIC int MeasureDiversity(Individual* a, Individual* b, Configuration& configuration)
+{
+    int diversity = 0;
+    int numOfGuests = configuration.GetNumberOfGuests();
+    int tableSize = configuration.GetTableSize();
+    int numOfTables = configuration.GetNumberOfTables();
+
+    std::vector<int> seatingA = a->GetSeatingArrangement();
+    std::vector<int> seatingB = b->GetSeatingArrangement();
+
+    int numOfSeats = tableSize * numOfTables;
+    for (int i = 0; i < numOfSeats; i++) {
+        if (seatingA[i] < 0) {
+            seatingA[i] = 0;
+        }
+
+        if (seatingB[i] < 0) {
+            seatingB[i] = 0;
+        }
+    }
+
+    for (int i = 1; i <= numOfGuests; i++) {
+        auto indexA = std::distance(seatingA.begin(), std::find(seatingA.begin(), seatingA.end(), i));
+        auto indexB = std::distance(seatingB.begin(), std::find(seatingB.begin(), seatingB.end(), i));
+
+        bool seatingMatched = false;
+        int positionMatched = 0; // 0 for nextToR and 1 for nextToL
+
+        int rightA = indexA + 1, rightB = indexB + 1;
+        int leftA = indexA - 1, leftB = indexB - 1;
+
+        if (indexA % tableSize == 0) { // first element in subarray
+            leftA = indexA + tableSize - 1;
+        } else if ((indexA - 1) % tableSize == 0) { // last element in subarray
+            rightA = indexA - (tableSize - 1);
+        }
+
+        if (indexB % tableSize == 0) { // first element in subarray
+            leftB = indexB + tableSize - 1;
+        } else if ((indexB - 1) % tableSize == 0) { // last element in subarray
+            rightB = indexB - (tableSize - 1);
+        }
+
+        if ((seatingA[rightA] != seatingB[rightB]) && (seatingA[leftA] != seatingB[leftB])) {
+            diversity++;
+        } else {
+            seatingMatched = true;
+
+            if (seatingA[rightA] == seatingB[rightB]) {
+                positionMatched = 0;
+            } else {
+                positionMatched = 1;
+            }
+        }
+
+        if (!seatingMatched) {
+            if ((seatingA[leftA] != seatingB[rightB]) && (seatingA[rightA] != seatingB[leftB])) {
+                diversity++;
+            }
+        } else {
+            if ((!positionMatched) && (seatingA[leftA] != seatingB[leftB])) {
+                diversity++;
+            } else if ((positionMatched) && (seatingA[rightA] != seatingB[rightB])) {
+                diversity++;
+            }
+        }
+
+        int temp = 0;
+        int emptyA = 0;
+        int emptyB = 0;
+
+        int tableA = indexA / tableSize;
+        int tableB = indexB / tableSize;
+
+        for (int i = tableA * tableSize; i < (tableA + 1) * tableSize; i++) {
+            if (i == indexA) {
+                continue;
+            }
+
+            if (seatingA[i] == 0) {
+                emptyA++;
+                continue;
+            }
+
+            auto indexBPrime = std::distance(seatingB.begin(), std::find(seatingB.begin(), seatingB.end(), seatingA[i]));
+            if ((indexBPrime / tableSize) == tableB) {
+                temp++;
+            }
+        }
+
+        for (int i = tableB * tableSize; i < (tableB + 1) * tableSize; i++) {
+            if (seatingB[i] == 0) {
+                emptyB++;
+            }
+        }
+
+        temp += std::min(emptyA, emptyB);
+        diversity += (tableSize - 1 - temp);
+    }
+
+    return diversity;
+}
+
+DLL_PUBLIC void MigratePopulations(std::vector<Population> population, Configuration& configuration)
+{
+    std::vector<int> populationNumber;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        populationNumber.push_back(i);
+    }
+
+    std::random_shuffle(populationNumber.begin(), populationNumber.end());
+    for (int i = 0; i < configuration.sNumberOfIslands; i += 2) {
+        for (int j = 0; j < configuration.sMigrationSize; j++) {
+            int random = rand() % configuration.sPopulationSize;
+            std::swap(population[populationNumber[i]][random], population[populationNumber[i + 1]][random]);
+        }
+    }
 }
 
 DLL_PUBLIC void GenerateOutputFile(Individual* champion, Configuration& configuration)

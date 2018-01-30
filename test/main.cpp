@@ -58,7 +58,7 @@ TEST_CASE("Testing PMX", "[Crossover]") {
     // for (auto x : children.second->GetSeatingArrangement()) std::cout << x << ' '; std::cout << std::endl;
 }
 
-TEST_CASE("Testing full pass") {
+TEST_CASE("Testing Single Ideal Solution", "[!mayfail]") {
     setup();
     std::vector< std::vector<int> > preferences { { 0,5,3,3,3,5,3,3,3,3,3,3,3,3,3 },
                                                   { 5,0,5,3,3,3,3,3,3,3,3,3,3,3,3 },
@@ -77,35 +77,184 @@ TEST_CASE("Testing full pass") {
                                                   { 3,3,3,3,3,3,3,3,3,3,3,5,3,3,0 } };
 
     Configuration configuration = Configuration(6, 15, std::vector<std::string>(), preferences);
-    Population population;
-    Individual* champion = nullptr;
+    std::vector<Population> population;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        // 1: Initialize Population
+        population.push_back(Population());
+        InitializePopulation(population[i], configuration);
 
-    // 1: Initialize Population
-    InitializePopulation(population, configuration);
+        // 2: Evaluate Fitness
+        EvaluateFitness(population[i], configuration);
+    }
 
-    // 2: Evaluate Fitness
-    EvaluateFitness(population, configuration);
-    champion = FindChampion(population);
+    int numOfGenerations = 0;
 
     // 3: while not Termination do
-    int numOfGenerations = 0;
-    while (numOfGenerations < configuration.sMaxGenerations && champion->GetFitness() != 0) {
-        // 4: Parent Selection
-        Population parents = ParentSelection(population, configuration);
+    while (numOfGenerations < configuration.sMaxGenerations) {
 
-        // 5: Perform Crossover & Mutation
-        Population offspring = GenerateOffspring(parents, configuration);
+        for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+            // 4: Parent Selection
+            Population parents = ParentSelection(population[i], configuration);
 
-        // 6: Evaluate Fitness
-        EvaluateFitness(offspring, configuration);
+            // 5: Perform Crossover & Mutation
+            Population offspring = GenerateOffspring(parents, configuration);
 
-        // 7: Survivor Selection
-        population = SurvivorSelection(parents, offspring, configuration);
+            // 6: Evaluate Fitness
+            EvaluateFitness(offspring, configuration);
 
-        // 8: Find champion
-        champion = FindChampion(population);
+            // 7: Survivor Selection
+            population[i] = SurvivorSelection(parents, offspring, configuration);
+        }
+
+        if (numOfGenerations % configuration.sEpochLength == 0) {
+            // 9: Migration
+            MigratePopulations(population, configuration);
+        }
+
         numOfGenerations++;
     }
 
+    Population mergedPopulation;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        mergedPopulation.insert(mergedPopulation.end(), population[i].begin(), population[i].end());
+    }
+
+    Individual* champion;
+    champion = FindChampion(mergedPopulation);
+
     REQUIRE(champion->GetFitness() == 0);
+}
+
+TEST_CASE("Testing Multiple Ideal Solutions", "[!mayfail]") {
+    setup();
+    std::vector< std::vector<int> > preferences { { 0,4,4,4,4,4,3,3,3,3,3,3,3,3,3 },
+                                                  { 4,0,4,4,4,4,3,3,3,3,3,3,3,3,3 },
+                                                  { 4,4,0,4,4,4,3,3,3,3,3,3,3,3,3 },
+                                                  { 4,4,4,0,4,4,3,3,3,3,3,3,3,3,3 },
+                                                  { 4,4,4,4,0,4,3,3,3,3,3,3,3,3,3 },
+                                                  { 4,4,4,4,4,0,3,3,3,3,3,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,0,4,4,4,4,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,4,0,4,4,4,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,4,4,0,4,4,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,4,4,4,0,4,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,4,4,4,4,0,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,3,3,3,3,3,0,4,4,4 },
+                                                  { 3,3,3,3,3,3,3,3,3,3,3,4,0,4,4 },
+                                                  { 3,3,3,3,3,3,3,3,3,3,3,4,4,0,4 },
+                                                  { 3,3,3,3,3,3,3,3,3,3,3,4,4,4,0 } };
+
+    Configuration configuration = Configuration(6, 15, std::vector<std::string>(), preferences);
+    std::vector<Population> population;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        // 1: Initialize Population
+        population.push_back(Population());
+        InitializePopulation(population[i], configuration);
+
+        // 2: Evaluate Fitness
+        EvaluateFitness(population[i], configuration);
+    }
+
+    int numOfGenerations = 0;
+
+    // 3: while not Termination do
+    while (numOfGenerations < configuration.sMaxGenerations) {
+
+        for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+            // 4: Parent Selection
+            Population parents = ParentSelection(population[i], configuration);
+
+            // 5: Perform Crossover & Mutation
+            Population offspring = GenerateOffspring(parents, configuration);
+
+            // 6: Evaluate Fitness
+            EvaluateFitness(offspring, configuration);
+
+            // 7: Survivor Selection
+            population[i] = SurvivorSelection(parents, offspring, configuration);
+        }
+
+        if (numOfGenerations % configuration.sEpochLength == 0) {
+            // 9: Migration
+            MigratePopulations(population, configuration);
+        }
+
+        numOfGenerations++;
+    }
+
+    Population mergedPopulation;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        mergedPopulation.insert(mergedPopulation.end(), population[i].begin(), population[i].end());
+    }
+
+    Individual* champion;
+    champion = FindChampion(mergedPopulation);
+
+    REQUIRE(champion->GetFitness() == 0);
+}
+
+TEST_CASE("Testing No Ideal Solution", "[!mayfail]") {
+    setup();
+    std::vector< std::vector<int> > preferences { { 0,5,3,3,3,5,3,3,3,3,3,3,3,3,3 },
+                                                  { 5,0,5,3,3,3,3,3,3,3,3,3,3,3,3 },
+                                                  { 3,5,0,5,3,3,3,3,3,3,3,3,3,3,3 },
+                                                  { 3,3,5,0,5,3,3,3,3,3,3,3,3,3,3 },
+                                                  { 3,3,3,5,0,5,3,3,3,3,3,3,3,3,3 },
+                                                  { 5,3,3,3,5,0,3,3,3,3,3,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,0,5,3,3,3,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,5,0,5,3,3,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,3,5,0,5,3,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,3,3,5,0,5,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,3,3,3,5,0,3,3,3,3 },
+                                                  { 3,3,3,3,3,3,3,3,3,3,3,0,5,3,3 },
+                                                  { 3,3,3,3,3,3,3,3,3,3,3,5,0,5,3 },
+                                                  { 3,3,3,3,3,3,3,3,3,3,3,3,5,0,3 },
+                                                  { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,0 } };
+
+    Configuration configuration = Configuration(6, 15, std::vector<std::string>(), preferences);
+    std::vector<Population> population;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        // 1: Initialize Population
+        population.push_back(Population());
+        InitializePopulation(population[i], configuration);
+
+        // 2: Evaluate Fitness
+        EvaluateFitness(population[i], configuration);
+    }
+
+    int numOfGenerations = 0;
+
+    // 3: while not Termination do
+    while (numOfGenerations < configuration.sMaxGenerations) {
+
+        for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+            // 4: Parent Selection
+            Population parents = ParentSelection(population[i], configuration);
+
+            // 5: Perform Crossover & Mutation
+            Population offspring = GenerateOffspring(parents, configuration);
+
+            // 6: Evaluate Fitness
+            EvaluateFitness(offspring, configuration);
+
+            // 7: Survivor Selection
+            population[i] = SurvivorSelection(parents, offspring, configuration);
+        }
+
+        if (numOfGenerations % configuration.sEpochLength == 0) {
+            // 9: Migration
+            MigratePopulations(population, configuration);
+        }
+
+        numOfGenerations++;
+    }
+
+    Population mergedPopulation;
+    for (int i = 0; i < configuration.sNumberOfIslands; i++) {
+        mergedPopulation.insert(mergedPopulation.end(), population[i].begin(), population[i].end());
+    }
+
+    Individual* champion;
+    champion = FindChampion(mergedPopulation);
+
+    REQUIRE(champion->GetFitness() == 30);
 }
