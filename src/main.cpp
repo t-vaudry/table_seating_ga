@@ -8,6 +8,18 @@
 
 #define TESTING false
 
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void printProgress(float percentage)
+{
+    int val = (int)(percentage * 100);
+    int lpad = (int)(percentage * PBWIDTH);
+    int rpad = PBWIDTH - lpad;
+    printf("\r%3d%% [%.*s%*s]", val, lpad, PBSTR, rpad, "");
+    fflush(stdout);
+}
+
 using namespace std;
 
 int main()
@@ -65,6 +77,8 @@ int main()
         }
 
         numOfGenerations++;
+
+        printProgress((float)numOfGenerations / (float)configuration.sMaxGenerations);
     }
 
     if (TESTING) {
@@ -394,13 +408,33 @@ DLL_PUBLIC int EvaluateDiversity(std::vector<Population> populations, Configurat
     Individual* champion = FindChampion(population);
 
     for (int i = 0; i < populationSize; i++) {
-        if (population[i]->GetFitness() < champion->GetFitness() + configuration.sDiversityRange) {
+        if (population[i]->GetFitness() <= champion->GetFitness() + configuration.sDiversityRange) {
             fittestIndividualsIndex.push_back(i);
+        }
+    }
+
+    // UNIQUE INDIVIDUALS
+    for (size_t i = 0; i < fittestIndividualsIndex.size(); i++) {
+        std::vector<int> indicesToRemove;
+        for (size_t j = i + 1; j < fittestIndividualsIndex.size(); j++) {
+            if (MeasureDiversity(population[fittestIndividualsIndex[i]], population[fittestIndividualsIndex[j]], configuration) == 0) {
+                indicesToRemove.push_back(j);
+            }
+
+            while (indicesToRemove.size() != 0) {
+                fittestIndividualsIndex.erase(fittestIndividualsIndex.begin() + indicesToRemove.back());
+                indicesToRemove.pop_back();
+            }
         }
     }
 
     int diversity = 0;
     int numOfFit = fittestIndividualsIndex.size();
+
+    std::ofstream file;
+    file.open("../src/output/numbers.csv", std::ios::app);
+    file << numOfFit << ",";
+    file.close();
 
     for (int i = 0; i < numOfFit; i++) {
         for (int j = i + 1; j < numOfFit; j++) {
@@ -444,13 +478,13 @@ DLL_PUBLIC int MeasureDiversity(Individual* a, Individual* b, Configuration& con
 
         if (indexA % tableSize == 0) { // first element in subarray
             leftA = indexA + tableSize - 1;
-        } else if ((indexA - 1) % tableSize == 0) { // last element in subarray
+        } else if ((indexA + 1) % tableSize == 0) { // last element in subarray
             rightA = indexA - (tableSize - 1);
         }
 
         if (indexB % tableSize == 0) { // first element in subarray
             leftB = indexB + tableSize - 1;
-        } else if ((indexB - 1) % tableSize == 0) { // last element in subarray
+        } else if ((indexB + 1) % tableSize == 0) { // last element in subarray
             rightB = indexB - (tableSize - 1);
         }
 
@@ -485,24 +519,24 @@ DLL_PUBLIC int MeasureDiversity(Individual* a, Individual* b, Configuration& con
         int tableA = indexA / tableSize;
         int tableB = indexB / tableSize;
 
-        for (int i = tableA * tableSize; i < (tableA + 1) * tableSize; i++) {
-            if (i == indexA) {
+        for (int j = tableA * tableSize; j < (tableA + 1) * tableSize; j++) {
+            if (j == indexA) {
                 continue;
             }
 
-            if (seatingA[i] == 0) {
+            if (seatingA[j] == 0) {
                 emptyA++;
                 continue;
             }
 
-            auto indexBPrime = std::distance(seatingB.begin(), std::find(seatingB.begin(), seatingB.end(), seatingA[i]));
+            auto indexBPrime = std::distance(seatingB.begin(), std::find(seatingB.begin(), seatingB.end(), seatingA[j]));
             if ((indexBPrime / tableSize) == tableB) {
                 temp++;
             }
         }
 
-        for (int i = tableB * tableSize; i < (tableB + 1) * tableSize; i++) {
-            if (seatingB[i] == 0) {
+        for (int j = tableB * tableSize; j < (tableB + 1) * tableSize; j++) {
+            if (seatingB[j] == 0) {
                 emptyB++;
             }
         }

@@ -97,7 +97,7 @@ public:
     static const int sOffspringSize = 300;
     static const int sMaxGenerations = 1000;
     static const int sEpochLength = 50;
-    static const int sDiversityRange = 10;
+    static const int sDiversityRange = 0;
     static const int sNumberOfIslands = 6;
     static const int sMigrationSize = 5;
 

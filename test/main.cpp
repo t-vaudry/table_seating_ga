@@ -58,6 +58,47 @@ TEST_CASE("Testing PMX", "[Crossover]") {
     // for (auto x : children.second->GetSeatingArrangement()) std::cout << x << ' '; std::cout << std::endl;
 }
 
+TEST_CASE("Testing Fitness", "[EvaluateFitness]") {
+    setup();
+
+    std::vector< std::vector<int> > preferences{ { 0,5,3,3,3,5,3,3,3,3,3,3,3,3,3 },
+    { 5,0,5,3,3,3,3,3,3,3,3,3,3,3,3 },
+    { 3,5,0,5,3,3,3,3,3,3,3,3,3,3,3 },
+    { 3,3,5,0,5,3,3,3,3,3,3,3,3,3,3 },
+    { 3,3,3,5,0,5,3,3,3,3,3,3,3,3,3 },
+    { 5,3,3,3,5,0,3,3,3,3,3,3,3,3,3 },
+    { 3,3,3,3,3,3,0,5,3,3,3,3,3,3,3 },
+    { 3,3,3,3,3,3,5,0,5,3,3,3,3,3,3 },
+    { 3,3,3,3,3,3,3,5,0,5,3,3,3,3,3 },
+    { 3,3,3,3,3,3,3,3,5,0,5,3,3,3,3 },
+    { 3,3,3,3,3,3,3,3,3,5,0,3,3,3,3 },
+    { 3,3,3,3,3,3,3,3,3,3,3,0,5,3,5 },
+    { 3,3,3,3,3,3,3,3,3,3,3,5,0,5,3 },
+    { 3,3,3,3,3,3,3,3,3,3,3,3,5,0,3 },
+    { 3,3,3,3,3,3,3,3,3,3,3,5,3,3,0 } };
+
+    Configuration configuration = Configuration(6, 15, std::vector<std::string>(), preferences);
+    Individual* individual = new Individual(std::vector<int> {2,3,4,5,6,13,12,7,8,9,10,11,0,-1,15,14,1,-2});
+
+    Population population;
+    population.push_back(individual);
+
+    EvaluateFitness(population, configuration);
+
+    REQUIRE(individual->GetFitness() == 200);
+}
+
+TEST_CASE("Testing Diversity Measurement", "[MeasureDiversity]") {
+    setup();
+    Configuration configuration = Configuration(4, 6, std::vector<std::string> {}, std::vector< std::vector<int> > {});
+    Individual* individual1 = new Individual(std::vector<int> {1,2,3,4,5,6,-1,0});
+    Individual* individual2 = new Individual(std::vector<int> {-1,5,6,0,1,2,3,4});
+
+    int diversity = MeasureDiversity(individual1, individual2, configuration);
+
+    REQUIRE(diversity == 0);
+}
+
 TEST_CASE("Testing Single Ideal Solution", "[!mayfail]") {
     setup();
     std::vector< std::vector<int> > preferences { { 0,5,3,3,3,5,3,3,3,3,3,3,3,3,3 },
